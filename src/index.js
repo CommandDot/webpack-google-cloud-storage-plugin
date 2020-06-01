@@ -1,9 +1,10 @@
 import Promise from "bluebird";
 import PropTypes from "prop-types";
-import merge from "lodash.merge";
-import gcs from "@google-cloud/storage";
+import { Storage } from "@google-cloud/storage";
 import path from "path";
+
 import { pick } from "./utils";
+import { uploadFile } from "./gcp";
 
 const recursive = Promise.promisify(require("recursive-readdir"));
 
@@ -109,11 +110,7 @@ module.exports = class WebpackGoogleCloudStoragePlugin {
       return;
     }
 
-    this.client = gcs(
-      merge(this.storageOptions, {
-        promise: Promise,
-      })
-    );
+    this.client = new Storage(this.storageOptions);
 
     this.isConnected = true;
   }
@@ -183,20 +180,16 @@ module.exports = class WebpackGoogleCloudStoragePlugin {
   }
 
   uploadFiles(files = []) {
-    const bucket = this.client.bucket(this.uploadOptions.bucketName);
-    // see https://hackernoon.com/concurrency-control-in-promises-with-bluebird-977249520f23
-    // http://bluebirdjs.com/docs/api/promise.map.html#map-option-concurrency
-    return Promise.map(
-      files,
-      (file) =>
-        bucket.upload(file.path, {
-          destination: this.uploadOptions.destinationNameFn(file),
-          gzip: this.uploadOptions.gzip || false,
-          public: this.uploadOptions.makePublic || false,
-          resumable: this.uploadOptions.resumable,
-          metadata: this.uploadOptions.metadataFn(file),
-        }),
-      { concurrency: this.uploadOptions.concurrency || 10 }
+    return Promise.map(files, (file) =>
+      uploadFile(
+        this.client,
+        this.uploadOptions.bucketName,
+        file,
+        this.uploadOptions.destinationNameFn(file),
+        this.uploadOptions.metadataFn(file),
+        this.uploadOptions.gzip || false,
+        this.uploadOptions.makePublic || false
+      )
     );
   }
 };
