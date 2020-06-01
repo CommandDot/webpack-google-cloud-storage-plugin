@@ -838,7 +838,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */(function(module) {/**
 	 * Lodash (Custom Build) <https://lodash.com/>
 	 * Build: `lodash modularize exports="npm" -o ./`
-	 * Copyright JS Foundation and other contributors <https://js.foundation/>
+	 * Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
 	 * Released under MIT license <https://lodash.com/license>
 	 * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
 	 * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -941,6 +941,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	/** Used to access faster Node.js helpers. */
 	var nodeUtil = (function() {
 	  try {
+	    // Use `util.types` for Node.js 10+.
+	    var types = freeModule && freeModule.require && freeModule.require('util').types;
+
+	    if (types) {
+	      return types;
+	    }
+
+	    // Legacy `process.binding('util')` for Node.js < 10.
 	    return freeProcess && freeProcess.binding && freeProcess.binding('util');
 	  } catch (e) {}
 	}());
@@ -1024,20 +1032,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return function(arg) {
 	    return func(transform(arg));
 	  };
-	}
-
-	/**
-	 * Gets the value at `key`, unless `key` is "__proto__".
-	 *
-	 * @private
-	 * @param {Object} object The object to query.
-	 * @param {string} key The key of the property to get.
-	 * @returns {*} Returns the property value.
-	 */
-	function safeGet(object, key) {
-	  return key == '__proto__'
-	    ? undefined
-	    : object[key];
 	}
 
 	/** Used for built-in method references. */
@@ -1761,8 +1755,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return;
 	  }
 	  baseFor(source, function(srcValue, key) {
+	    stack || (stack = new Stack);
 	    if (isObject(srcValue)) {
-	      stack || (stack = new Stack);
 	      baseMergeDeep(object, source, key, srcIndex, baseMerge, customizer, stack);
 	    }
 	    else {
@@ -1838,7 +1832,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (isArguments(objValue)) {
 	        newValue = toPlainObject(objValue);
 	      }
-	      else if (!isObject(objValue) || (srcIndex && isFunction(objValue))) {
+	      else if (!isObject(objValue) || isFunction(objValue)) {
 	        newValue = initCloneObject(srcValue);
 	      }
 	    }
@@ -2248,6 +2242,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	    otherArgs[start] = transform(array);
 	    return apply(func, this, otherArgs);
 	  };
+	}
+
+	/**
+	 * Gets the value at `key`, unless `key` is "__proto__" or "constructor".
+	 *
+	 * @private
+	 * @param {Object} object The object to query.
+	 * @param {string} key The key of the property to get.
+	 * @returns {*} Returns the property value.
+	 */
+	function safeGet(object, key) {
+	  if (key === 'constructor' && typeof object[key] === 'function') {
+	    return;
+	  }
+
+	  if (key == '__proto__') {
+	    return;
+	  }
+
+	  return object[key];
 	}
 
 	/**
